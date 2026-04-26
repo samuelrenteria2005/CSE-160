@@ -1,1 +1,1 @@
-hello :)
+Helped guided through the assignment with the use of generative ai.

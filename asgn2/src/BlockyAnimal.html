@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Blocky Animal</title>
+  </head>
+
+  <body onload="main()">
+    <canvas id="webgl" width="400" height="400">
+    Please use a browser that supports "canvas"
+    </canvas>
+
+    <p id="numdot">...</p>
+
+    <p>
+      Front Legs <input type="range" min="-45" max="45" value="0" class="slider" id="yellowSlide">
+      Animation:
+      <button type="button" id="animationYellowOnButton">ON</button>
+      <button type="button" id="animationYellowOffButton">OFF</button>
+    </p>
+
+    <p>
+      Back Legs <input type="range" min="-45" max="45" value="0" class="slider" id="magentaSlide">
+      Animation:
+      <button type="button" id="animationMagentaOnButton">ON</button>
+      <button type="button" id="animationMagentaOffButton">OFF</button>
+    </p>
+
+    <p>
+      Head Wobble <input type="range" min="-30" max="30" value="0" class="slider" id="headSlide">
+      Animation:
+      <button type="button" id="animationHeadOnButton">ON</button>
+      <button type="button" id="animationHeadOffButton">OFF</button>
+    </p>
+
+    <p>
+      Tail Wag <input type="range" min="-45" max="45" value="0" class="slider" id="tailSlide">
+      Animation:
+      <button type="button" id="animationTailOnButton">ON</button>
+      <button type="button" id="animationTailOffButton">OFF</button>
+    </p>
+
+    <p>
+      Camera Angle Y <input type="range" min="0" max="360" value="30" class="slider" id="angleSlide">
+    </p>
+
+    <p>
+      Camera Angle X <input type="range" min="-60" max="60" value="10" class="slider" id="angleXSlide">
+    </p>
+
+    <p>Drag canvas to rotate &nbsp;|&nbsp; Shift+Click to poke the pig!</p>
+
+    <script src="../lib/webgl-utils.js"></script>
+    <script src="../lib/cuon-matrix-cse160.js"></script>
+    <script src="../lib/webgl-debug.js"></script>
+    <script src="../lib/cuon-utils.js"></script>
+    <script src="Cube.js"></script>
+    <script src="Cylinder.js"></script>
+    <script src="BlockyAnimal.js"></script>
+  </body>
+</html>
