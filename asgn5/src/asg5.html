@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Three.js - Scene</title>
+  <style>
+    html, body { margin: 0; height: 100%; }
+    #c { width: 100%; height: 100%; display: block; }
+  </style>
+</head>
+<body>
+  <canvas id="c"></canvas>
+
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.184.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.184.0/examples/jsm/"
+    }
+  }
+  </script>
+
+  <script type="module">
+  import * as THREE from 'three';
+  import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+  import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+  import { EXRLoader } from 'three/addons/loaders/EXRLoader.js';
+
+  function main() {
+    const canvas = document.querySelector('#c');
+    const renderer = new THREE.WebGLRenderer({ antialias: true, canvas });
+
+    // Perspective camera
+    const fov = 75, aspect = 2, near = 0.1, far = 100;
+    const camera = new THREE.PerspectiveCamera(fov, aspect, near, far);
+    camera.position.z = 7;
+
+    const scene = new THREE.Scene();
+
+    // CAMERA CONTROLS
+    // Drag to orbit, scroll to zoom, right-drag to pan.
+    const controls = new OrbitControls(camera, canvas);
+    controls.target.set(0, 0, 0);   // orbit around the center of the scene
+    controls.enableDamping = true;  // smooth, weighted feel
+    controls.update();
+
+    // BACKGROUND
+    {
+      const exrLoader = new EXRLoader();
+      exrLoader.load('../resources/pretoria_gardens_1k.exr', (texture) => {
+        texture.mapping = THREE.EquirectangularReflectionMapping;
+        scene.background = texture;
+      },
+      undefined,
+      (err) => console.error('Failed to load resources/pretoria_gardens_1k.exr', err));
+    }
+
+    // ---- LIGHTS (three different types) ----
+    // 1) Directional light — like the sun: parallel rays from one direction
+    const dirLight = new THREE.DirectionalLight(0xffffff, 2.5);
+    dirLight.position.set(-1, 2, 4);
+    scene.add(dirLight);
+
+    // 2) Hemisphere light — sky color from above, ground color from below (soft fill)
+    const hemiLight = new THREE.HemisphereLight(0xb1e1ff, 0xb97a20, 1);
+    scene.add(hemiLight);
+
+    // 3) Point light — a bulb shining in all directions from a single point
+    const pointLight = new THREE.PointLight(0xffaa33, 50, 30);
+    pointLight.position.set(3, 3, 3);
+    scene.add(pointLight);
+
+    const geometry = new THREE.BoxGeometry(1, 1, 1);
+
+    // TEXTURES
+    const loader = new THREE.TextureLoader();
+
+    function makeImage(draw) {
+      const c = document.createElement('canvas');
+      c.width = c.height = 128;
+      draw(c.getContext('2d'), 128);
+      return c.toDataURL();
+    }
+
+    function loadColorTexture(path) {
+      const texture = loader.load(path);
+      texture.colorSpace = THREE.SRGBColorSpace;
+      return texture;
+    }
+
+    // Cube 1
+    const material = new THREE.MeshPhongMaterial({ map: loadColorTexture('../resources/wall.jpg') });
+
+    // Cube 2: 6 DIFFERENT textures, one per face (face order: +x,-x,+y,-y,+z,-z)
+    const palette = ['#e74c3c', '#3498db', '#2ecc71', '#f1c40f', '#9b59b6', '#1abc9c'];
+    const materials = palette.map((color, i) => {
+      const img = makeImage((ctx, s) => {
+        ctx.fillStyle = color; ctx.fillRect(0, 0, s, s);
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 80px sans-serif';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(i + 1, s / 2, s / 2);
+      });
+      const texture = loadColorTexture(img);
+      texture.magFilter = THREE.NearestFilter; // filtering demo: blocky/pixelated up close
+      return new THREE.MeshPhongMaterial({ map: texture });
+    });
+
+    function makeInstance(geometry, material, x) {
+      const cube = new THREE.Mesh(geometry, material);
+      cube.position.x = x;
+      scene.add(cube);
+      return cube;
+    }
+
+    const cubes = [
+      makeInstance(geometry, material, -3),   // same texture on all faces
+      // makeInstance(geometry, materials, 3),   // a different texture per face
+    ];
+
+    //  MORE 3D OBJECTS
+    const env = new THREE.Group();
+    scene.add(env);
+    const groundY = -1.6;
+
+    // Ground 
+    const ground = new THREE.Mesh(
+      new THREE.CircleGeometry(22, 48),
+      new THREE.MeshPhongMaterial({ color: 0x4f7c3a, side: THREE.DoubleSide })
+    );
+    ground.rotation.x = -Math.PI / 2;
+    ground.position.y = groundY;
+    env.add(ground);
+
+    // Tree 
+    function makeTree(x, z) {
+      const trunk = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.3, 0.45, 2, 12),
+        new THREE.MeshPhongMaterial({ color: 0x6b4423 })
+      );
+      trunk.position.set(x, groundY + 1, z);
+      const leaves = new THREE.Mesh(
+        new THREE.ConeGeometry(1.4, 3, 14),
+        new THREE.MeshPhongMaterial({ color: 0x2e7d32 })
+      );
+      leaves.position.set(x, groundY + 3.5, z);
+      env.add(trunk, leaves);
+    }
+    [[-9, -6], [-11, 3], [-6, 9], [6, 9], [11, 2], [9, -6]].forEach(([x, z]) => makeTree(x, z));
+
+    // Rock 
+    function makeRock(x, z, r) {
+      const rock = new THREE.Mesh(
+        new THREE.SphereGeometry(r, 10, 8),
+        new THREE.MeshPhongMaterial({ color: 0x8a8a90, flatShading: true })
+      );
+      rock.position.set(x, groundY + r * 0.5, z);
+      rock.scale.y = 0.6;
+      env.add(rock);
+    }
+    [[-4, -7, 0.8], [5, -6, 1.1], [-7, 5, 0.7], [7, 5, 0.9], [3, 7, 0.6], [-3, 8, 0.8]]
+      .forEach(([x, z, r]) => makeRock(x, z, r));
+
+    // Lamp post 
+    function makeLamp(x, z) {
+      const pole = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.12, 0.15, 4, 10),
+        new THREE.MeshPhongMaterial({ color: 0x333333 })
+      );
+      pole.position.set(x, groundY + 2, z);
+      const bulb = new THREE.Mesh(
+        new THREE.SphereGeometry(0.4, 16, 16),
+        new THREE.MeshPhongMaterial({ color: 0xffffaa, emissive: 0xffff66 })
+      );
+      bulb.position.set(x, groundY + 4.2, z);
+      env.add(pole, bulb);
+    }
+    makeLamp(-5, -3);
+    makeLamp(5, -3);
+
+    //  LOAD CUSTOM 3D MODELS
+    const gltfLoader = new GLTFLoader();
+    gltfLoader.load('../resources/cubone.glb', (gltf) => {
+      const root = gltf.scene;
+
+    
+      const box = new THREE.Box3().setFromObject(root);
+      const size = box.getSize(new THREE.Vector3()).length();
+      const center = box.getCenter(new THREE.Vector3());
+
+      root.position.sub(center);          
+      const targetSize = 3;               
+      root.scale.setScalar(targetSize / size);
+      root.rotation.y = Math.PI;          // turn it around (180°)
+      root.position.y += -0.3;
+
+      scene.add(root);
+    },
+    undefined,
+    (err) => console.error('Failed to load resources/cubone.glb', err));
+
+    gltfLoader.load('../resources/Glurak and Grill.glb', (gltf) => {
+      const root = gltf.scene;
+
+      const box = new THREE.Box3().setFromObject(root);
+      const size = box.getSize(new THREE.Vector3()).length();
+      const center = box.getCenter(new THREE.Vector3());
+
+      root.position.sub(center);
+      root.position.x += 3;
+      root.position.y += 0.3;
+      root.position.z += 3;
+
+      const targetSize = 8;
+      root.scale.setScalar(targetSize / size);
+      root.rotation.y = Math.PI;         
+      root.rotation.x = 0.2;             
+      root.rotation.z = -0.1;
+
+      scene.add(root);
+    },
+    undefined,
+    (err) => console.error('Failed to load resources/Glurak and Grill.glb', err));
+
+    function resizeRendererToDisplaySize(renderer) {
+      const canvas = renderer.domElement;
+      const pixelRatio = window.devicePixelRatio;
+      const width  = Math.floor(canvas.clientWidth  * pixelRatio);
+      const height = Math.floor(canvas.clientHeight * pixelRatio);
+      const needResize = canvas.width !== width || canvas.height !== height;
+      if (needResize) renderer.setSize(width, height, false);
+      return needResize;
+    }
+
+    function render(time) {
+      time *= 0.001;
+
+      if (resizeRendererToDisplaySize(renderer)) {
+        camera.aspect = canvas.clientWidth / canvas.clientHeight;
+        camera.updateProjectionMatrix();
+      }
+
+      cubes.forEach((cube, ndx) => {
+        const speed = 0.4 + ndx * 0.1;
+        cube.rotation.x = time * speed;
+        cube.rotation.y = time * speed;
+      });
+      controls.update();
+      renderer.render(scene, camera);
+      requestAnimationFrame(render);
+    }
+    requestAnimationFrame(render);
+  }
+
+  main();
+  </script>
+</body>
+</html>
